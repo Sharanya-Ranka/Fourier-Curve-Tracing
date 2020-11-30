@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
@@ -13,47 +13,20 @@ public class UserFunction : MonoBehaviour
 
     void Start()
     {
+        // Get line renderer of attached object.
+
         custom_function_line=GetComponent<LineRenderer>();
         custom_function_line.positionCount=0;
-        
-        // StartCoroutine(ExecuteSequence());
-        // //Func<double,double[]> function_to_transform=ConvertListtoFunction();
-
-        // Debug.Log("In UserFunction");
-
-        
     }
 
-    IEnumerator ExecuteSequence()
+    public bool CheckForInput()
     {
-        yield return StartCoroutine(GetPositionList());
-        ConvertListtoFunction();
-    }
+        /*
+        Checks for user input
+        left mouse click - new point
+        Enter(Return) key - finish drawing
+        */
 
-    IEnumerator GetPositionList()
-    {
-
-        while(!Input.GetKeyDown(KeyCode.Return))
-        {
-            
-            if(Input.GetMouseButtonDown(0))
-            {
-                Vector3 mousePos = Input.mousePosition;
-                mousePos.z = Camera.main.nearClipPlane+10;
-                Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePos);
-
-                positions.Add(worldPosition);
-                UpdateLineRenderer(worldPosition);
-            }
-            yield return null;
-        }
-
-        positions.Add(positions[0]);
-        UpdateLineRenderer(positions[0]);
-    }
-
-    public bool check_for_input()
-    {
         if(Input.GetKeyDown(KeyCode.Return))
         {
             positions.Add(positions[0]);
@@ -83,15 +56,15 @@ public class UserFunction : MonoBehaviour
         custom_function_line.SetPosition(custom_function_line.positionCount-1,position);
     }
 
-
     private void ConvertListtoFunction()
     {
-        Debug.Log("In ConvertListtoFunction");
+        /*
+        Once the list is made, turn it into a function.
+        */
         
+        // Fill the position_distance list and normalise distances
         double total_distance=SetPositionDistances();
 
-        Debug.Log("Done distances");
-        
         double[] func(double time)
         {
             /*
@@ -133,11 +106,11 @@ public class UserFunction : MonoBehaviour
     private double SetPositionDistances()
     {
         /*
-        SetPositionDistances() sets the position_distance list with distance of the points along the curve
+        SetPositionDistances() sets the position_distance list with 
+        (normalised)distance of the points along the curve
         and returns the total distance covered
         */
-        Debug.Log("In SetPositionDistances");
-        Debug.Log("Positions count is "+positions.Count);
+
         double distance_till_now=0;
         positon_distance.Add(0);
         for(int i=1;i<positions.Count;i++)
@@ -153,9 +126,13 @@ public class UserFunction : MonoBehaviour
             positon_distance[i]/=distance_till_now;
         }
 
-        Debug.Log("Done SetPositionDistances");
         return(distance_till_now);
 
+    }
+
+    public void ToggleVisibility()
+    {
+        custom_function_line.enabled = ! custom_function_line.enabled;
     }
 
     
