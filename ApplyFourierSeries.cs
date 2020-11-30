@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
@@ -11,45 +11,39 @@ public class ApplyFourierSeries : MonoBehaviour
 
     public LineRenderer line;
 
-    double time=0.0d;
+    double time=0.0d, time_delta = 0.001d;
     private Vector3 temp_position;
     // Start is called before the first frame update
     public void CalculateFourierSeries(Func<double,double[]> function_to_transform, int max_frequency)
     {
+        /*
+        Calculates fourier series of function_to_transform using max_frequency.
+        Uses FourierSeries.cs to accomplish task. Stores the fourier series to be used later for
+        showing the approximation
+        */
+
         temp_position=transform.position;
-        // int max_frequency=127;
-        // double time_delta=1/max_frequency;
-        //coefficients=FourierSeries.GetFourierCoefficients(FourierSeries.function,max_frequency,time_delta);
         coefficients=FourierSeries.fft_GetFourierCoefficients(function_to_transform,max_frequency);
         fourier_series=FourierSeries.GetFourierSeries(coefficients);
-        foreach(Dictionary<int,Complex> dk in coefficients)
-        {
-            //Print all the coefficients for each dimension
-            Debug.Log("For dimension");
-            foreach(KeyValuePair<int,Complex> c in dk)
-            {
-                Debug.Log(c.Key+" : "+c.Value);
-            }
-            Debug.Log("\n");
-        }
 
         line=GetComponent<LineRenderer>();
         line.positionCount=0;
-        //line.width=0.04f;
-        // Debug.Log(coefficients);
+
     }
 
-    // Update is called once per frame
-    public void AUpdate()
+    public void FunctionUpdate()
     {
-        time+=0.001;
+        /*
+        Updates the position of the GameObject this script is attached to. 
+        Uses the fourier series approximation to update position
+        */
+        time += time_delta;
         double[] pos=fourier_series(time);
-        // Debug.Log(pos[0]+" "+pos[1]+" "+pos[2]);
+
         temp_position.x=(float)pos[0];
         temp_position.y=(float)pos[1];
         temp_position.z=(float)pos[2]+0.1f;
 
-        
         transform.position=temp_position;
 
         UpdateLineRenderer();
@@ -58,7 +52,10 @@ public class ApplyFourierSeries : MonoBehaviour
 
     public void UpdateLineRenderer()
     {
-        if(time<=1.01)
+        /*
+        Updates the line renderer of the object, so that the approximation can be seen.
+        */
+        if(time <= 1 + time_delta)
         {
             line.positionCount++;
             line.SetPosition(line.positionCount-1,temp_position);
