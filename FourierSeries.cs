@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,6 +9,10 @@ public static class FourierSeries
     private static double pi=3.14159265;
     public static Dictionary<int, Complex>[] GetFourierCoefficients(Func<double,double[]> func,int max_frequency,double time_delta)
     {
+        /*
+        Uses definition to compute and return the fourier coefficients of func. 
+        (Naive implementation)
+        */
         Dictionary<int,Complex> coefficientsx=new Dictionary<int,Complex>();
         Dictionary<int,Complex> coefficientsy=new Dictionary<int,Complex>();
         Dictionary<int,Complex> coefficientsz=new Dictionary<int,Complex>();
@@ -23,13 +27,10 @@ public static class FourierSeries
             {
                 Complex multiplier=Complex.FromPolarCoordinates(1.0d,-2*pi*i*t);
                 double[] function_value=func(t);
-                Debug.Log("Freq="+i+" t="+t);
-                Debug.Log("multiplier is "+multiplier.Real+" "+multiplier.Imaginary);
-                Complex temp=multiplier*(function_value[0])*time_delta;
-                ckx+=temp;
-                Debug.Log("temp="+temp.Real+" "+temp.Imaginary);
-                cky+=multiplier*(function_value[1])*time_delta;
-                ckz+=multiplier*(function_value[2])*time_delta;
+
+                ckx += multiplier*(function_value[0])*time_delta;
+                cky += multiplier*(function_value[1])*time_delta;
+                ckz += multiplier*(function_value[2])*time_delta;
             }
 
             coefficientsx.Add(i,ckx);
@@ -45,18 +46,25 @@ public static class FourierSeries
 
     public static Func<double,double[]> GetFourierSeries(Dictionary<int,Complex>[] coefficients)
     {
+        /*
+        Returns a function func that is the fourier series corresponding to the given coefficients.
+        */
         double[] func(double time)
         {
-            //f is the function value at time 'time'. 
+            /*
+            f is the function value at time 'time'. 
+            It is calculated using the values of the coefficients.
+            */
             double[] f=new double[coefficients.Length];
             int i=0;
+
             foreach(Dictionary<int,Complex> dk in coefficients)
             {
                 Complex func_val=new Complex(0,0);
                 // Calculating function value of dimension dx at time 'time'
                 foreach(KeyValuePair<int,Complex> c in dk)
                 {
-                    // Integer is frequency, and Complex number is associated fourier coefficient
+                    // Integer is frequency, and Complex number is corresponding fourier coefficient
                     // Add partial sum to func_val. This is one term of the series for one dimension
                     Complex multiplier=Complex.FromPolarCoordinates(1.0d,2*pi*c.Key*time);
                     Complex term=multiplier*c.Value*2;
@@ -75,6 +83,7 @@ public static class FourierSeries
     public static Dictionary<int, Complex>[] fft_GetFourierCoefficients(Func<double,double[]> func,int max_frequency)
     {
         /* 
+        Finds fourier coefficients using Fast Fourier Transform
         max_frequency determines number of samples taken and time diff between each sample
         max_frequency should be a power of 2 (assumed max_frequency<1e7 or ~2^23)
         */
@@ -84,19 +93,23 @@ public static class FourierSeries
         Complex[] function_samples_x=new Complex[num_of_samples];
         Complex[] function_samples_y=new Complex[num_of_samples];
         Complex[] function_samples_z=new Complex[num_of_samples];
+
         for(int i=0;i<num_of_samples;i++)
         {
             double[] func_val=func(i*time_delta);
+
             function_samples_x[i]=(Complex)(func_val[0]);
             function_samples_y[i]=(Complex)(func_val[1]);
             function_samples_z[i]=(Complex)(func_val[2]);
-
-             Debug.Log(i+": "+function_samples_x[i]+" "+function_samples_y[i]+" "+function_samples_z[i]);
         }
+
+        //Applying fft to the three components of the function
 
         fft_coefficients_main(function_samples_x,num_of_samples,false);
         fft_coefficients_main(function_samples_y,num_of_samples,false);
         fft_coefficients_main(function_samples_z,num_of_samples,false);
+
+        //Building the actual coefficients from the ones we got
 
         Dictionary<int,Complex> coefficientsx=new Dictionary<int,Complex>();
         Dictionary<int,Complex> coefficientsy=new Dictionary<int,Complex>();
@@ -125,7 +138,10 @@ public static class FourierSeries
     }
     public static void fft_coefficients_main(Complex[] function_values,int two_n,bool invert)
     {
-        /* n must be a power of 2. minimum n is 1(2^0) which is the base case
+        /* Function that implements fft given function samples. 
+        It changes the samples to coefficients in place.
+        
+        n must be a power of 2. minimum n is 1(2^0) which is the base case
           Formula is f_hat=F_2n*f=  |I_n  D_n| * |F_n  0| * |f_even|
                                     |I_n -D_n|   |0  F_n|   |f_odd |
 
@@ -150,13 +166,18 @@ public static class FourierSeries
             f_odd[i/2]=function_values[i+1];
         }
 
+        //Performing the recursive step (Divide step)
+
         fft_coefficients_main(f_even,n,invert);
         fft_coefficients_main(f_odd,n,invert);
 
-        //Complex[] ans=new Complex(two_n);
+        //Computing answer using the answers of the recursive steps (Conquer step)
 
         Complex omega_2n_power_i=Complex.FromPolarCoordinates(1.0d,0);
         Complex w2n=Complex.FromPolarCoordinates(1.0d,(2*pi*(invert?-1:1))/two_n);
+        
+        //Performing the matrix multiplication(sparse matrices)
+
         for(int i=0;i<n;i++)
         {
             
@@ -172,37 +193,6 @@ public static class FourierSeries
             }
             omega_2n_power_i*=w2n;
         }
-    }
-
-    public static double[] function(double time)
-    {
-        double[] f_val=new double[3];
-        f_val[0]=3*Math.Cos(time*(6*pi));
-        f_val[1]=3*Math.Sin(time*(6*pi));
-        f_val[2]=20*Math.Cos(time*(2*pi));;
-        //0-1  
-        return(f_val);
-    }
-
-    public static void Main(string[] args)
-    {
-        int max_frequency=10;
-        double time_delta=0.001;
-        Dictionary<int,Complex>[] coefficients=FourierSeries.GetFourierCoefficients(FourierSeries.function,max_frequency,time_delta);
-        
-        int i=0;
-        foreach(Dictionary<int,Complex> dk in coefficients)
-            {
-                //Print all the coefficients for each dimension
-                Console.WriteLine("For dimension"+i);
-                foreach(KeyValuePair<int,Complex> c in dk)
-                {
-                    Console.Write(c.Key+": "+c.Value+", ");
-                }
-                Console.WriteLine();
-                i+=1;
-            }
-
     }
 }
 
